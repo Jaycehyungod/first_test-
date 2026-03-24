@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>RGB 색상 찾기</title>
+  <style>
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 40px;
+      font-family: sans-serif;
+    }
+
+    .title {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+
+    .palette-canvas {
+      border-radius: 8px;
+      cursor: crosshair;
+      border: 2px solid #ccc;
+    }
+
+    .hue-bar {
+      width: 300px;
+      height: 18px;
+      margin-top: 10px;
+      cursor: pointer;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+
+    .cursor-dot {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 2px solid white;
+      box-shadow: 0 0 3px rgba(0,0,0,0.6);
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+    }
+
+    .palette-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+
+    .result-row {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .color-preview {
+      width: 80px;
+      height: 80px;
+      border-radius: 10px;
+      border: 2px solid #ddd;
+      background-color: rgb(255, 0, 0);
+    }
+
+    .result-box {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .result-text {
+      font-size: 18px;
+      font-weight: bold;
+      color: #333;
+    }
+
+    .result-hex {
+      font-size: 16px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="title">RGB 색상 찾기</div>
+
+    <div class="palette-wrapper">
+      <canvas class="palette-canvas" id="paletteCanvas" width="300" height="200"></canvas>
+      <div class="cursor-dot" id="cursorDot"></div>
+    </div>
+
+    <input class="hue-bar" type="range" id="hueRange" min="0" max="360" value="0" oninput="onHueChange()">
+
+    <div class="result-row">
+      <div class="color-preview" id="colorPreview"></div>
+      <div class="result-box">
+        <div class="result-text" id="resultRgb">rgb(255, 0, 0)</div>
+        <div class="result-hex" id="resultHex">#FF0000</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('paletteCanvas');
+    const ctx = canvas.getContext('2d');
+    const dot = document.getElementById('cursorDot');
+
+    let hue = 0;
+    let dotX = canvas.width;
+    let dotY = 0;
+
+    function drawPalette() {
+      // 가로: 흰색 → 선택한 색
+      const gradH = ctx.createLinearGradient(0, 0, canvas.width, 0);
+      gradH.addColorStop(0, 'white');
+      gradH.addColorStop(1, `hsl(${hue}, 100%, 50%)`);
+      ctx.fillStyle = gradH;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // 세로: 투명 → 검정
+      const gradV = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradV.addColorStop(0, 'rgba(0,0,0,0)');
+      gradV.addColorStop(1, 'rgba(0,0,0,1)');
+      ctx.fillStyle = gradV;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function toHex(n) {
+      return Math.round(n).toString(16).padStart(2, '0').toUpperCase();
+    }
+
+    function pickColor(x, y) {
+      const pixel = ctx.getImageData(x, y, 1, 1).data;
+      const r = pixel[0], g = pixel[1], b = pixel[2];
+
+      document.getElementById('colorPreview').style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+      document.getElementById('resultRgb').textContent = `rgb(${r}, ${g}, ${b})`;
+      document.getElementById('resultHex').textContent = `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+
+      dotX = x;
+      dotY = y;
+      const rect = canvas.getBoundingClientRect();
+      dot.style.left = (rect.left + x + window.scrollX) + 'px';
+      dot.style.top = (rect.top + y + window.scrollY) + 'px';
+    }
+
+    function onHueChange() {
+      hue = document.getElementById('hueRange').value;
+      drawPalette();
+      pickColor(dotX, dotY);
+    }
+
+    // 마우스 이벤트
+    let isDragging = false;
+
+    canvas.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      const rect = canvas.getBoundingClientRect();
+      pickColor(e.clientX - rect.left, e.clientY - rect.top);
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.max(0, Math.min(canvas.width - 1, e.clientX - rect.left));
+      const y = Math.max(0, Math.min(canvas.height - 1, e.clientY - rect.top));
+      pickColor(x, y);
+    });
+
+    document.addEventListener('mouseup', () => { isDragging = false; });
+
+    // 초기화
+    drawPalette();
+    pickColor(canvas.width - 1, 0);
+  </script>
+</body>
+</html>
